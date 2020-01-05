@@ -19,8 +19,7 @@
     </properties>
 
     <modules>
-        <module>sqs-springboot</module>
-<!--        <module>amazon-sqs</module>-->
+        <module>amazon-sqs</module>
     </modules>
 
     <build>
