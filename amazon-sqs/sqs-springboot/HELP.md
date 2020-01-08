@@ -1,8 +1,9 @@
-# Getting Started
+# Amazon SQS in Java and Spring boot
+To run the application,
+```bash
+mvn spring-boot:run
+```
 
-### Reference Documentation
-For further reference, please consider the following sections:
+Then visit [swagger ui](http://localhost:8080/swagger-ui.html) in your browser. 
 
-* [Official Apache Maven documentation](https://maven.apache.org/guides/index.html)
-* [Spring Boot Maven Plugin Reference Guide](https://docs.spring.io/spring-boot/docs/2.2.2.RELEASE/maven-plugin/)
-
+* queue name for FIFO queue must end with .fifo. Eg: myqueue.fifo
