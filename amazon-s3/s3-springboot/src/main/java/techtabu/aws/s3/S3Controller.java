@@ -3,6 +3,7 @@ package techtabu.aws.s3;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.Bucket;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.CreateBucketResponse;
 import software.amazon.awssdk.services.s3.model.ListBucketsResponse;
@@ -39,6 +40,6 @@ public class S3Controller {
             log.info("Bucket: {}", b.name());
         });
 
-        return response.buckets().stream().map(b -> b.name()).collect(Collectors.toList());
+        return response.buckets().stream().map(Bucket::name).collect(Collectors.toList());
     }
 }
