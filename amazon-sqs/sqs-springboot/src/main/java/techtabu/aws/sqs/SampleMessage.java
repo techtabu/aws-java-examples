@@ -11,4 +11,6 @@ public class SampleMessage {
 
     private String queueURL;
     private String message;
+    private String messageGroup;
+    private boolean fifo;
 }

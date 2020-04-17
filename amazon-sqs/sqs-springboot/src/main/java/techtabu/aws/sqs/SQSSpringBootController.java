@@ -27,31 +27,23 @@ public class SQSSpringBootController {
         amazonSQS = AmazonSQSClientBuilder.defaultClient();
     }
 
-    @PostMapping("/queue/standard/create")
-    public String createQueue(@RequestParam("queueName") String queueName, @RequestParam("isFifo") boolean isFifo) {
-        log.info("Creating Queue with name: {}", queueName);
+    @PostMapping("/queue")
+    public String createStandardQueue(@RequestParam("queueName") String queueName, @RequestParam("isFifo") boolean isFifo) {
+        log.info("Creating Queue with name: {} & isFifo: {}", queueName, isFifo);
 
         final CreateQueueRequest createQueueRequest = new CreateQueueRequest(queueName);
 
-        final String myQueueUrl = amazonSQS.createQueue(createQueueRequest).getQueueUrl();
+        if (isFifo) {
+            final Map<String, String> attributes = new HashMap<>();
 
-        log.info("Created queue {}, with URL: {}", queueName, myQueueUrl);
-        return myQueueUrl;
-    }
+            // A FIFO queue must have the FifoQueue attribute set to True
+            attributes.put("FifoQueue", "true");
 
-    @PostMapping("/queue/fifo/create")
-    public String createFifoQueue(@RequestParam("queueName") String queueName) {
-        log.info("Creating FIFO Queue with name: {}", queueName);
+            // If the user doesn't provide a MessageDeduplicationId, generate a MessageDeduplicationId based on the content.
+            attributes.put("ContentBasedDeduplication", "true");
+            createQueueRequest.withAttributes(attributes);
+        }
 
-        final Map<String, String> attributes = new HashMap<>();
-
-        // A FIFO queue must have the FifoQueue attribute set to True
-        attributes.put("FifoQueue", "true");
-
-        // If the user doesn't provide a MessageDeduplicationId, generate a MessageDeduplicationId based on the content.
-        attributes.put("ContentBasedDeduplication", "true");
-
-        final CreateQueueRequest createQueueRequest = new CreateQueueRequest(queueName).withAttributes(attributes);
 
         final String myQueueUrl = amazonSQS.createQueue(createQueueRequest).getQueueUrl();
 
@@ -59,7 +51,7 @@ public class SQSSpringBootController {
         return myQueueUrl;
     }
 
-    @GetMapping("/queue/getall")
+    @GetMapping("/queues")
     public List<String> getAllQueues() {
         log.info("Getting all queues");
         List<String> queueURLs = amazonSQS.listQueues().getQueueUrls();
@@ -67,13 +59,20 @@ public class SQSSpringBootController {
         return queueURLs;
     }
 
-    @PostMapping("/message/send")
-    public void sendMessage(@RequestBody SampleMessage sampleMessage) {
-        log.info("Sending \n\t message {} \n\tto queue: {}.", sampleMessage.getMessage(), sampleMessage.getQueueURL());
-        amazonSQS.sendMessage(new SendMessageRequest(sampleMessage.getQueueURL(), sampleMessage.getMessage()));
+    @PostMapping("/message/")
+    public void sendFifoMessage(@RequestBody SampleMessage sampleMessage) {
+        final SendMessageRequest sendMessageRequest = new SendMessageRequest(sampleMessage.getQueueURL(), sampleMessage.getMessage());
+
+        if (sampleMessage.isFifo()) {
+            // Message Group Id is mandatory to send a message to a fifo queue.
+            sendMessageRequest.setMessageGroupId(sampleMessage.getMessageGroup());
+        }
+
+        final SendMessageResult sendMessageResult = amazonSQS.sendMessage(sendMessageRequest);
+        log.info("Message sent successfully with message Id: {} and sequence number: {}", sendMessageResult.getMessageId(), sendMessageResult.getSequenceNumber());
     }
 
-    @GetMapping("/message/receive")
+    @GetMapping("/messages")
     public List<String> receiveAndDeleteMessages(@RequestParam("queueURL") String queueURL) {
         log.info("Receiving messages from: {}", queueURL);
         final ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(queueURL);
