@@ -1,13 +1,11 @@
 package techtabu.aws.sqs;
 
-
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.services.sqs.AmazonSQS;
-import com.amazonaws.services.sqs.AmazonSQSClientBuilder;
-import com.amazonaws.services.sqs.model.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.*;
 
 import javax.annotation.PostConstruct;
 import java.util.HashMap;
@@ -20,18 +18,22 @@ import java.util.stream.Collectors;
 @Slf4j
 public class SQSSpringBootController {
 
-    AmazonSQS amazonSQS;
+    SqsClient amazonSQS;
 
     @PostConstruct
     public void createClient() {
-        amazonSQS = AmazonSQSClientBuilder.defaultClient();
+        amazonSQS = SqsClient.builder()
+                .region(Region.US_EAST_1)
+                .build();
     }
 
     @PostMapping("/queue")
     public String createStandardQueue(@RequestParam("queueName") String queueName, @RequestParam("isFifo") boolean isFifo) {
         log.info("Creating Queue with name: {} & isFifo: {}", queueName, isFifo);
 
-        final CreateQueueRequest createQueueRequest = new CreateQueueRequest(queueName);
+        final CreateQueueRequest createQueueRequest = CreateQueueRequest.builder()
+                .queueName(queueName)
+                .build();
 
         if (isFifo) {
             final Map<String, String> attributes = new HashMap<>();
@@ -41,76 +43,106 @@ public class SQSSpringBootController {
 
             // If the user doesn't provide a MessageDeduplicationId, generate a MessageDeduplicationId based on the content.
             attributes.put("ContentBasedDeduplication", "true");
-            createQueueRequest.withAttributes(attributes);
+            createQueueRequest.attributesAsStrings().putAll(attributes);
         }
 
 
-        final String myQueueUrl = amazonSQS.createQueue(createQueueRequest).getQueueUrl();
+        final String myQueueUrl = amazonSQS.createQueue(createQueueRequest).queueUrl();
 
         log.info("Created queue {}, with URL: {}", queueName, myQueueUrl);
         return myQueueUrl;
     }
 
     @GetMapping("/queues")
-    public List<String> getAllQueues() {
-        log.info("Getting all queues");
-        List<String> queueURLs = amazonSQS.listQueues().getQueueUrls();
+    public List<String> getAllQueues(@RequestParam("prefix") String prefix) {
+        log.info("Getting all queues with {}", prefix);
+
+        ListQueuesRequest listQueuesRequest = ListQueuesRequest.builder().queueNamePrefix(prefix).build();
+        List<String> queueURLs = amazonSQS.listQueues(listQueuesRequest).queueUrls();
+
         queueURLs.forEach(q -> log.info("Queue URL: {}", q));
         return queueURLs;
     }
 
-    @PostMapping("/message/")
-    public void sendFifoMessage(@RequestBody SampleMessage sampleMessage) {
-        final SendMessageRequest sendMessageRequest = new SendMessageRequest(sampleMessage.getQueueURL(), sampleMessage.getMessage());
+    @GetMapping("/queue/{name}")
+    public String getQueueUrl(@PathVariable("name") String queueName) {
+        GetQueueUrlRequest request = GetQueueUrlRequest.builder().queueName(queueName).build();
+        String queueUrl = amazonSQS.getQueueUrl(request).queueUrl();
 
-        if (sampleMessage.isFifo()) {
-            // Message Group Id is mandatory to send a message to a fifo queue.
-            sendMessageRequest.setMessageGroupId(sampleMessage.getMessageGroup());
+        log.info("queue url for: {} is {}", queueName, queueUrl);
+
+        return queueUrl;
+    }
+
+    @DeleteMapping("/queue/delete")
+    public void deleteQueue(@RequestParam("queueName") String queueName) {
+        log.info("Deleting Queue: {}", queueName);
+
+        try {
+            GetQueueUrlRequest request = GetQueueUrlRequest.builder().queueName(queueName).build();
+            String queueUrl = amazonSQS.getQueueUrl(request).queueUrl();
+            DeleteQueueRequest deleteRequest = DeleteQueueRequest.builder().queueUrl(queueUrl).build();
+            amazonSQS.deleteQueue(deleteRequest);
+        } catch (SqsException e) {
+            log.error("exception in deleting queue {}", e);
         }
 
-        final SendMessageResult sendMessageResult = amazonSQS.sendMessage(sendMessageRequest);
-        log.info("Message sent successfully with message Id: {} and sequence number: {}", sendMessageResult.getMessageId(), sendMessageResult.getSequenceNumber());
+    }
+
+    @PostMapping("/message/")
+    public void sendFifoMessage(@RequestBody SampleMessage sampleMessage) {
+
+        String messageGroupId = null;
+
+        if (sampleMessage.isFifo()) {
+            messageGroupId = sampleMessage.getMessageGroup();
+        }
+
+        SendMessageRequest sendMessageRequest = SendMessageRequest.builder()
+                .queueUrl(sampleMessage.getQueueURL())
+                .messageGroupId(messageGroupId)
+                .messageBody(sampleMessage.getMessage())
+                .build();
+
+
+        final SendMessageResponse sendMessageResponse = amazonSQS.sendMessage(sendMessageRequest);
+        log.info("Message sent successfully with message Id: {} and sequence number: {}", sendMessageResponse.messageId(), sendMessageResponse.sequenceNumber());
     }
 
     @GetMapping("/messages")
     public List<String> receiveAndDeleteMessages(@RequestParam("queueURL") String queueURL) {
         log.info("Receiving messages from: {}", queueURL);
-        final ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(queueURL);
-        final List<Message> messages = amazonSQS.receiveMessage(receiveMessageRequest).getMessages();
+        final ReceiveMessageRequest receiveMessageRequest = ReceiveMessageRequest.builder()
+                .queueUrl(queueURL)
+                .build();
+        final List<Message> messages = amazonSQS.receiveMessage(receiveMessageRequest).messages();
         messages.forEach(m -> {
-            log.info("  MessageId:     " + m.getMessageId());
-            log.info("  ReceiptHandle: " + m.getReceiptHandle());
-            log.info("  MD5OfBody:     " + m.getMD5OfBody());
-            log.info("  Body:          " + m.getBody());
-            for (final Map.Entry<String, String> entry : m.getAttributes().entrySet()) {
+            log.info("  MessageId:     " + m.messageId());
+            log.info("  ReceiptHandle: " + m.receiptHandle());
+            log.info("  MD5OfBody:     " + m.md5OfBody());
+            log.info("  Body:          " + m.body());
+            for (final Map.Entry<String, String> entry : m.attributesAsStrings().entrySet()) {
                 log.info("Attribute");
                 log.info("  Name:  " + entry.getKey());
                 log.info("  Value: " + entry.getValue());
             }
 
             log.info("Deleting message");
-            final String receiptHandle = m.getReceiptHandle();
-            amazonSQS.deleteMessage(new DeleteMessageRequest(queueURL, receiptHandle));
+            final String receiptHandle = m.receiptHandle();
+            amazonSQS.deleteMessage(DeleteMessageRequest.builder().queueUrl(queueURL).receiptHandle(receiptHandle).build());
         });
 
-        List<String> messageBodies = messages.stream().map(Message::getBody)
+        List<String> messageBodies = messages.stream().map(Message::body)
                 .collect(Collectors.toList());
 
         return messageBodies;
 
     }
 
-    @DeleteMapping("/queue/delete")
-    public void deleteQueue(@RequestParam("queueURL") String queueURL) {
-        log.info("Deleting Queue: {}", queueURL);
-        amazonSQS.deleteQueue(new DeleteQueueRequest(queueURL));
-    }
-
 
     @PostMapping("/simulate")
     public void simulateAll() {
 
-        final AmazonSQS sqs = AmazonSQSClientBuilder.defaultClient();
         log.info("===============================================");
         log.info("Getting Started with Amazon SQS Standard Queues");
         log.info("===============================================\n");
@@ -119,32 +151,37 @@ public class SQSSpringBootController {
 
             // Create a queue.
             log.info("Creating a new SQS queue called MyQueue.\n");
-            final CreateQueueRequest createQueueRequest = new CreateQueueRequest("MyQueue");
-            final String myQueueUrl = sqs.createQueue(createQueueRequest).getQueueUrl();
+            final CreateQueueRequest createQueueRequest = CreateQueueRequest.builder().queueName("MyQueue").build();
+            final String myQueueUrl = amazonSQS.createQueue(createQueueRequest).queueUrl();
 
             // List all queues.
             log.info("Listing all queues in your account.\n");
-            for (final String queueUrl : sqs.listQueues().getQueueUrls()) {
+            for (final String queueUrl : amazonSQS.listQueues().queueUrls()) {
                 log.info("  QueueUrl: " + queueUrl);
             }
             log.info("\n ******** \n");
 
             // Send a message.
             log.info("Sending a message to MyQueue.\n");
-            sqs.sendMessage(new SendMessageRequest(myQueueUrl, "This is my message text."));
+            amazonSQS.sendMessage(SendMessageRequest.builder()
+                    .queueUrl(myQueueUrl)
+                    .messageBody("This is my message text.")
+                    .build());
 
             // Receive messages.
             log.info("Receiving messages from MyQueue.\n");
-            final ReceiveMessageRequest receiveMessageRequest = new ReceiveMessageRequest(myQueueUrl);
-            final List<Message> messages = sqs.receiveMessage(receiveMessageRequest).getMessages();
+            final ReceiveMessageRequest receiveMessageRequest =  ReceiveMessageRequest.builder()
+                    .queueUrl(myQueueUrl)
+                    .build();
+            final List<Message> messages = amazonSQS.receiveMessage(receiveMessageRequest).messages();
 
             for (final Message message : messages) {
                 log.info("Message");
-                log.info("  MessageId:     " + message.getMessageId());
-                log.info("  ReceiptHandle: " + message.getReceiptHandle());
-                log.info("  MD5OfBody:     " + message.getMD5OfBody());
-                log.info("  Body:          " + message.getBody());
-                for (final Map.Entry<String, String> entry : message.getAttributes().entrySet()) {
+                log.info("  MessageId:     " + message.messageId());
+                log.info("  ReceiptHandle: " + message.receiptHandle());
+                log.info("  MD5OfBody:     " + message.md5OfBody());
+                log.info("  Body:          " + message.body());
+                for (final Map.Entry<String, String> entry : message.attributesAsStrings().entrySet()) {
                     log.info("Attribute");
                     log.info("  Name:  " + entry.getKey());
                     log.info("  Value: " + entry.getValue());
@@ -154,29 +191,24 @@ public class SQSSpringBootController {
 
             // Delete the message.
             log.info("Deleting a message.\n");
-            final String messageReceiptHandle = messages.get(0).getReceiptHandle();
-            sqs.deleteMessage(new DeleteMessageRequest(myQueueUrl, messageReceiptHandle));
+            final String messageReceiptHandle = messages.get(0).receiptHandle();
+            amazonSQS.deleteMessage(DeleteMessageRequest.builder()
+                    .queueUrl(myQueueUrl)
+                    .receiptHandle(messageReceiptHandle)
+                    .build());
 
             // Delete the queue.
             log.info("Deleting the test queue.\n");
-            sqs.deleteQueue(new DeleteQueueRequest(myQueueUrl));
+            amazonSQS.deleteQueue(DeleteQueueRequest.builder().queueUrl(myQueueUrl).build());
 
-        }  catch (final AmazonServiceException ase) {
+        }  catch (SqsException ase) {
             log.info("Caught an AmazonServiceException, which means " +
                     "your request made it to Amazon SQS, but was " +
                     "rejected with an error response for some reason.");
             log.info("Error Message:    " + ase.getMessage());
-            log.info("HTTP Status Code: " + ase.getStatusCode());
-            log.info("AWS Error Code:   " + ase.getErrorCode());
-            log.info("Error Type:       " + ase.getErrorType());
-            log.info("Request ID:       " + ase.getRequestId());
+            log.info("HTTP Status Code: " + ase.statusCode());
+            log.info("AWS Error Code:   " + ase.awsErrorDetails().errorCode());
 
-        } catch (final AmazonClientException ace) {
-            log.info("Caught an AmazonClientException, which means " +
-                    "the client encountered a serious internal problem while " +
-                    "trying to communicate with Amazon SQS, such as not " +
-                    "being able to access the network.");
-            log.info("Error Message: " + ace.getMessage());
         }
     }
 }

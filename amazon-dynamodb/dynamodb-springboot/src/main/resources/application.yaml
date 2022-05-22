@@ -5,6 +5,15 @@ server:
 dynamodb:
   local: true
 
+springdoc:
+  show-actuator: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
 ---
 spring:
   config:
