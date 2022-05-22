@@ -1,0 +1,15 @@
+
+server:
+  port: 8700
+
+dynamodb:
+  local: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: aws
+
+dynamodb:
+  local: false

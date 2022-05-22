@@ -24,6 +24,7 @@
     <modules>
         <module>amazon-s3</module>
         <module>amazon-sqs</module>
+        <module>amazon-dynamodb</module>
     </modules>
 
     <dependencyManagement>
