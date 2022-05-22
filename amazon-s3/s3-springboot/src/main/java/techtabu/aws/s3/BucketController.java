@@ -6,6 +6,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
 import javax.annotation.PostConstruct;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,7 +30,6 @@ public class BucketController {
                 .createBucket(CreateBucketRequest.builder()
                                 .bucket(bucketName).build());
 
-
         log.info(response.toString());
     }
 
@@ -48,5 +48,20 @@ public class BucketController {
         log.info("Trying to delete bucket: {}", bucketName);
         DeleteBucketRequest deleteBucketRequest = DeleteBucketRequest.builder().bucket(bucketName).build();
         s3Client.deleteBucket(deleteBucketRequest);
+    }
+
+
+    // List Objects
+    @GetMapping("/{bucket-name}")
+    public List<String> getAllObjectsFromBucket(@PathVariable("bucket-name") String bucketName) {
+        ListObjectsRequest request = ListObjectsRequest.builder().bucket(bucketName).build();
+        List<S3Object> objects = s3Client.listObjects(request).contents();
+        List<String> files = new ArrayList<>();
+        objects.forEach(o -> {
+            log.info("Name: {}", o.key());
+            files.add(o.key());
+        });
+
+        return files;
     }
 }

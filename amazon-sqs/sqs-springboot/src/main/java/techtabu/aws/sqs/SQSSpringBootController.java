@@ -2,15 +2,12 @@ package techtabu.aws.sqs;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
-import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.*;
 
 import javax.annotation.PostConstruct;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -98,15 +95,31 @@ public class SQSSpringBootController {
             messageGroupId = sampleMessage.getMessageGroup();
         }
 
-        SendMessageRequest sendMessageRequest = SendMessageRequest.builder()
-                .queueUrl(sampleMessage.getQueueURL())
-                .messageGroupId(messageGroupId)
-                .messageBody(sampleMessage.getMessage())
-                .build();
 
+        if (sampleMessage.getMessages().size() == 1) {
+            SendMessageRequest sendMessageRequest = SendMessageRequest.builder()
+                    .queueUrl(sampleMessage.getQueueURL())
+                    .messageGroupId(messageGroupId)
+                    .messageBody(sampleMessage.getMessages().get(0))
+                    .build();
+            SendMessageResponse sendMessageResponse = amazonSQS.sendMessage(sendMessageRequest);
+            log.info("Message sent successfully with message Id: {} and sequence number: {}", sendMessageResponse.messageId(), sendMessageResponse.sequenceNumber());
+        } else if (sampleMessage.getMessages().size() > 1){
+            List<SendMessageBatchRequestEntry> entries = new ArrayList<>();
+            sampleMessage.getMessages()
+                    .forEach(m -> entries.add(SendMessageBatchRequestEntry.builder().id(UUID.randomUUID().toString()).messageBody(m).build()));
 
-        final SendMessageResponse sendMessageResponse = amazonSQS.sendMessage(sendMessageRequest);
-        log.info("Message sent successfully with message Id: {} and sequence number: {}", sendMessageResponse.messageId(), sendMessageResponse.sequenceNumber());
+            SendMessageBatchRequest request = SendMessageBatchRequest.builder()
+                    .queueUrl(sampleMessage.getQueueURL())
+                    .entries(entries)
+                    .build();
+            SendMessageBatchResponse response = amazonSQS.sendMessageBatch(request);
+            response.successful()
+                    .forEach(e -> log.info("Message sent successfully with message Id: {}", e.messageId()));
+            response.failed()
+                    .forEach(e -> log.info("Message failed with code: {}", e.code()));
+        }
+
     }
 
     @GetMapping("/messages")
@@ -114,6 +127,7 @@ public class SQSSpringBootController {
         log.info("Receiving messages from: {}", queueURL);
         final ReceiveMessageRequest receiveMessageRequest = ReceiveMessageRequest.builder()
                 .queueUrl(queueURL)
+                .maxNumberOfMessages(5)
                 .build();
         final List<Message> messages = amazonSQS.receiveMessage(receiveMessageRequest).messages();
         messages.forEach(m -> {

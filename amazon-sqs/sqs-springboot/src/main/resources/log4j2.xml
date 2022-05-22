@@ -22,8 +22,6 @@
         </RollingFile>
     </Appenders>
 
-
-
     <Loggers>
         <Logger name="techtabu.aws.sqs" level="info" additivity="false">
             <AppenderRef ref="ConsoleAppender" />
