@@ -1,5 +1,6 @@
 package techtabu.aws.s3;
 
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -22,6 +23,7 @@ public class BucketController {
         s3Client = S3Client.create();
     }
 
+    @Operation(summary = "create new bucket for the given name")
     @PostMapping
     public void createBucket(@RequestParam(value = "name") String bucketName) {
 
@@ -33,6 +35,7 @@ public class BucketController {
         log.info(response.toString());
     }
 
+    @Operation(summary = "Get all the buckets in S3")
     @GetMapping
     public List<String> getAllBuckets() {
         ListBucketsResponse response = s3Client.listBuckets();
@@ -43,6 +46,7 @@ public class BucketController {
         return response.buckets().stream().map(Bucket::name).collect(Collectors.toList());
     }
 
+    @Operation(summary = "Delete the bucket identified by give name")
     @DeleteMapping
     public void deleteBucket(@RequestParam(value = "name") String bucketName) {
         log.info("Trying to delete bucket: {}", bucketName);
@@ -52,6 +56,7 @@ public class BucketController {
 
 
     // List Objects
+    @Operation(summary = "Return all the files in the bucket identified by name")
     @GetMapping("/{bucket-name}")
     public List<String> getAllObjectsFromBucket(@PathVariable("bucket-name") String bucketName) {
         ListObjectsRequest request = ListObjectsRequest.builder().bucket(bucketName).build();
