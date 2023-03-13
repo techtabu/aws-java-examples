@@ -4,22 +4,20 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>techtabu.aws.java</groupId>
-    <artifactId>aws-java-examples</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <artifactId>amazon-cognito</artifactId>
+    <groupId>techtabu.aws.cognito</groupId>
     <packaging>pom</packaging>
-    <name>AWS Java Examples</name>
+    <version>0.1.0-SNAPSHOT</version>
 
     <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <java.version>11</java.version>
+        <java.version>17</java.version>
     </properties>
 
     <modules>
-        <module>amazon-s3</module>
-        <module>amazon-sqs</module>
-        <module>amazon-dynamodb</module>
-        <module>amazon-cognito</module>
+        <module>cognito-springboot</module>
     </modules>
 
 </project>

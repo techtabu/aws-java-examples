@@ -1,3 +1,7 @@
+
+Project Name: Daedalus code: DDLS
+
+
 To use these applications, AWS credential should be saved in `~/.aws/credentials` file as below,
 ```properties
 [default]
@@ -12,7 +16,7 @@ region = your_aws_region
 You can follow [aws tutorial](https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/setup-credentials.html) 
 for setting up region and credentials.
 
-I will try to use SDK 2.x version. There is a quite a bit of changes from v1.x to v2.x.
+These examples are set to use SDK 2.0 version. 
 Please follow the [migration guide](https://docs.aws.amazon.com/sdk-for-java/v2/migration-guide/what-is-java-migration.html)
 for if you have any questions regarding the changes. 
 

@@ -1,0 +1,6 @@
+server:
+  port: 8788
+
+spring:
+  config:
+    import: optional:/Users/tabu/dev/aws/application.yml
