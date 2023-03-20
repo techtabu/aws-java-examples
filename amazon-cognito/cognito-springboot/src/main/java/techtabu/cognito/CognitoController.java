@@ -41,4 +41,12 @@ public class CognitoController {
     public List<String> getAllUsers() {
         return cognitoService.getAllUsers();
     }
+
+    @Operation(summary = "get access token via Java SDK")
+    @GetMapping("/access_token")
+    public String getAccessToken(@RequestParam("username") String username,
+                                 @RequestParam("password") String password) {
+        return cognitoService.getAccessToken(username, password);
+    }
+
 }

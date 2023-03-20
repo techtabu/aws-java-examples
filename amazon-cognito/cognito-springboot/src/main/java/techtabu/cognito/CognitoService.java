@@ -10,6 +10,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.model.*;
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author TechTabu
@@ -21,6 +22,9 @@ public class CognitoService {
 
     @Value("${aws.cognito.userPoolId}")
     private String userPoolId;
+
+    @Value("${aws.cognito.clientId}")
+    private String clientId;
 
     private CognitoIdentityClient cognitoClient;
     private CognitoIdentityProviderClient cognitoIdentityProviderClient;
@@ -79,5 +83,24 @@ public class CognitoService {
         });
 
         return users;
+    }
+
+
+
+    public String getAccessToken(String username, String password) {
+
+        AdminInitiateAuthRequest request = AdminInitiateAuthRequest.builder()
+                .authFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
+                .userPoolId(userPoolId)
+                .clientId(clientId)
+                .authParameters(Map.of("USERNAME", username, "PASSWORD", password))
+                .build();
+
+        AdminInitiateAuthResponse response = cognitoIdentityProviderClient.adminInitiateAuth(request);
+
+        log.info("received response: {}", response.authenticationResult().accessToken());
+
+        return response.authenticationResult().accessToken();
+
     }
 }
