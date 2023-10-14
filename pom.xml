@@ -20,6 +20,7 @@
         <module>amazon-sqs</module>
         <module>amazon-dynamodb</module>
         <module>amazon-cognito</module>
+        <module>amazon-sns</module>
     </modules>
 
 </project>
