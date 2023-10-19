@@ -1,14 +1,13 @@
 package techtabu.aws.s3;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.util.Assert;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
-import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -30,6 +29,7 @@ public class StorageService {
 
     public void createBucket(String bucketName) {
 
+        Assert.hasText(bucketName, "bucket name cannot by null or empty");
         log.info("Creating bucket: {}", bucketName);
         CreateBucketResponse response = s3Client
                 .createBucket(CreateBucketRequest.builder()
@@ -48,12 +48,14 @@ public class StorageService {
     }
 
     public void deleteBucket(String bucketName) {
+        Assert.hasText(bucketName, "bucket name cannot by null or empty");
         log.info("Trying to delete bucket: {}", bucketName);
         DeleteBucketRequest deleteBucketRequest = DeleteBucketRequest.builder().bucket(bucketName).build();
         s3Client.deleteBucket(deleteBucketRequest);
     }
 
     public List<String> getAllObjectsFromBucket(String bucketName) {
+        Assert.hasText(bucketName, "bucket name cannot by null or empty");
         ListObjectsRequest request = ListObjectsRequest.builder().bucket(bucketName).build();
         List<S3Object> objects = s3Client.listObjects(request).contents();
         List<String> files = new ArrayList<>();
@@ -66,6 +68,11 @@ public class StorageService {
     }
 
     public void createFolder(String bucket, String folder) {
+
+        Assert.hasText(bucket, "bucket name cannot by null or empty");
+        Assert.hasText(folder, "folder name cannot by null or empty");
+        Assert.isTrue(folder.endsWith("/"), "folder name must end with /");
+
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(bucket)
                 .key(folder)
@@ -74,6 +81,11 @@ public class StorageService {
     }
 
     public void createLifecyclePolicy(String bucket, String prefix, Integer days) {
+
+        Assert.hasText(bucket, "bucket name cannot by null or empty");
+        Assert.hasText(prefix, "prefix cannot by null or empty");
+        Assert.isTrue(prefix.endsWith("/"), "prefix must end with /");
+        Assert.isTrue(days > 0, "days should be positive integer");
 
         log.info("Adding life cycle configuration to bucket {} for objects with prefix {} for days: {}", bucket, prefix, days);
         try {
