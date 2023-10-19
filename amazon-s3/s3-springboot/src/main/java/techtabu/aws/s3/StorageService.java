@@ -80,31 +80,45 @@ public class StorageService {
         s3Client.putObject(request, RequestBody.empty());
     }
 
-    public void createLifecyclePolicy(String bucket, String prefix, Integer days) {
+    public void createLifecyclePolicy(String bucket) {
 
         Assert.hasText(bucket, "bucket name cannot by null or empty");
-        Assert.hasText(prefix, "prefix cannot by null or empty");
-        Assert.isTrue(prefix.endsWith("/"), "prefix must end with /");
-        Assert.isTrue(days > 0, "days should be positive integer");
 
-        log.info("Adding life cycle configuration to bucket {} for objects with prefix {} for days: {}", bucket, prefix, days);
+        log.info("Adding life cycle configuration to bucket {}", bucket);
         try {
-            LifecycleRuleFilter filter = LifecycleRuleFilter.builder()
-                    .prefix(prefix)
+            LifecycleRuleFilter filter1 = LifecycleRuleFilter.builder()
+                    .prefix("daily/")
                     .build();
 
-            LifecycleExpiration expiration = LifecycleExpiration.builder()
-                    .days(days)
+            LifecycleExpiration expiration1 = LifecycleExpiration.builder()
+                    .days(1)
                     .build();
 
-            LifecycleRule rule = LifecycleRule.builder()
-                    .expiration(expiration)
-                    .filter(filter)
+            LifecycleRule rule1 = LifecycleRule.builder()
+                    .id("one-day-delete-by-prefix-rule")
+                    .expiration(expiration1)
+                    .filter(filter1)
                     .status(ExpirationStatus.ENABLED)
                     .build();
 
+            LifecycleRuleFilter filter2 = LifecycleRuleFilter.builder()
+                    .tag(Tag.builder().key("retention").value("one-day").build())
+                    .build();
+
+            LifecycleExpiration expiration2 = LifecycleExpiration.builder()
+                    .days(1)
+                    .build();
+
+            LifecycleRule rule2 = LifecycleRule.builder()
+                    .id("one-day-delete-by-tag-rule")
+                    .expiration(expiration2)
+                    .filter(filter2)
+                    .status(ExpirationStatus.ENABLED)
+                    .build();
+
+
             BucketLifecycleConfiguration config = BucketLifecycleConfiguration.builder()
-                    .rules(List.of(rule))
+                    .rules(List.of(rule1, rule2))
                     .build();
 
             PutBucketLifecycleConfigurationRequest request = PutBucketLifecycleConfigurationRequest.builder()

@@ -52,9 +52,7 @@ public class BucketController {
 
     @Operation(summary = "Add life cycle configuration to given bucket")
     @PutMapping("/lifecycle")
-    public void createLifeCycleConfig(@RequestParam(value = "bucketName") String bucket,
-                                      @RequestParam(value = "prefix") String prefix,
-                                      @RequestParam(value = "days") Integer days) {
-        storageService.createLifecyclePolicy(bucket, prefix, days);
+    public void createLifeCycleConfig(@RequestParam(value = "bucketName") String bucket) {
+        storageService.createLifecyclePolicy(bucket);
     }
 }
