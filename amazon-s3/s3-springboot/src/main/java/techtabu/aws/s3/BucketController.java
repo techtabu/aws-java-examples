@@ -3,70 +3,58 @@ package techtabu.aws.s3;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.*;
 
-import javax.annotation.PostConstruct;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/buckets")
 @Slf4j
 public class BucketController {
 
-    S3Client s3Client;
+    private final StorageService storageService;
 
-    @PostConstruct
-    public void createClient() {
-        s3Client = S3Client.create();
+    public BucketController(StorageService storageService) {
+        this.storageService = storageService;
     }
 
     @Operation(summary = "create new bucket for the given name")
     @PostMapping
     public void createBucket(@RequestParam(value = "name") String bucketName) {
-
-        log.info("Creating bucket: {}", bucketName);
-        CreateBucketResponse response = s3Client
-                .createBucket(CreateBucketRequest.builder()
-                                .bucket(bucketName).build());
-
-        log.info(response.toString());
+        storageService.createBucket(bucketName);
     }
 
     @Operation(summary = "Get all the buckets in S3")
     @GetMapping
     public List<String> getAllBuckets() {
-        ListBucketsResponse response = s3Client.listBuckets();
-        response.buckets().forEach(b -> {
-            log.info("Bucket: {}", b.name());
-        });
-
-        return response.buckets().stream().map(Bucket::name).collect(Collectors.toList());
+        return storageService.getAllBuckets();
     }
 
     @Operation(summary = "Delete the bucket identified by give name")
     @DeleteMapping
     public void deleteBucket(@RequestParam(value = "name") String bucketName) {
-        log.info("Trying to delete bucket: {}", bucketName);
-        DeleteBucketRequest deleteBucketRequest = DeleteBucketRequest.builder().bucket(bucketName).build();
-        s3Client.deleteBucket(deleteBucketRequest);
+        storageService.deleteBucket(bucketName);
     }
-
 
     // List Objects
     @Operation(summary = "Return all the files in the bucket identified by name")
     @GetMapping("/{bucket-name}")
     public List<String> getAllObjectsFromBucket(@PathVariable("bucket-name") String bucketName) {
-        ListObjectsRequest request = ListObjectsRequest.builder().bucket(bucketName).build();
-        List<S3Object> objects = s3Client.listObjects(request).contents();
-        List<String> files = new ArrayList<>();
-        objects.forEach(o -> {
-            log.info("Name: {}", o.key());
-            files.add(o.key());
-        });
+        return storageService.getAllObjectsFromBucket(bucketName);
+    }
 
-        return files;
+    @Operation(summary = "Create folder in an s3 bucket")
+    @PostMapping("/folder")
+    public void createFolder(@RequestParam(value = "bucket") String bucket,
+                             @RequestParam(value = "folder") String folder) {
+        storageService.createFolder(bucket, folder);
+    }
+
+
+    @Operation(summary = "Add life cycle configuration to given bucket")
+    @PutMapping("/lifecycle")
+    public void createLifeCycleConfig(@RequestParam(value = "bucketName") String bucket,
+                                      @RequestParam(value = "prefix") String prefix,
+                                      @RequestParam(value = "days") Integer days) {
+        storageService.createLifecyclePolicy(bucket, prefix, days);
     }
 }
