@@ -4,3 +4,9 @@ server:
 spring:
   config:
     import: optional:/Users/tabu/dev/aws/application.yml
+
+aws:
+  cognito:
+    userPoolId: "<set-me-up"
+    clientId: "<set-me-up"
+    domain: "set-me-up"
