@@ -49,4 +49,11 @@ public class CognitoController {
         return cognitoService.getAccessToken(username, password);
     }
 
+    @Operation(summary = "get id token via Java SDK")
+    @GetMapping("/id_token")
+    public String getIdToken(@RequestParam("username") String username,
+                             @RequestParam("password") String password) {
+        return cognitoService.getIdToken(username, password);
+    }
+
 }

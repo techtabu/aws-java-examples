@@ -103,4 +103,21 @@ public class CognitoService {
         return response.authenticationResult().accessToken();
 
     }
+
+    public String getIdToken(String username, String password) {
+
+        AdminInitiateAuthRequest request = AdminInitiateAuthRequest.builder()
+                .authFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
+                .userPoolId(userPoolId)
+                .clientId(clientId)
+                .authParameters(Map.of("USERNAME", username, "PASSWORD", password))
+                .build();
+
+        AdminInitiateAuthResponse response = cognitoIdentityProviderClient.adminInitiateAuth(request);
+
+        log.info("received response: {}", response.authenticationResult().idToken());
+
+        return response.authenticationResult().idToken();
+
+    }
 }

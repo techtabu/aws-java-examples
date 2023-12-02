@@ -1,0 +1,15 @@
+server:
+  port: 8705
+  error:
+    include-message: always
+
+spring:
+  config:
+    import: optional:/Users/tabu/dev/aws/iam-springboot.yaml
+
+aws:
+  iamPrefix: <set-me-up>
+  assumedRoleName: <set-me-up>
+  sessionDurationSeconds: 3600
+  stsAdminAccessKey: 'set-me-up'
+  stsAdminSecretKey: 'set-me-up'
